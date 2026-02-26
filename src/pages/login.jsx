@@ -1,12 +1,24 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+const generateCaptcha = () => {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let value = "";
+  for (let index = 0; index < 6; index += 1) {
+    const randomIndex = Math.floor(Math.random() * chars.length);
+    value += chars[randomIndex];
+  }
+  return value;
+};
+
 function Login() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     email: "",
     password: ""
   });
+  const [captchaText, setCaptchaText] = useState(generateCaptcha);
+  const [captchaInput, setCaptchaInput] = useState("");
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -14,6 +26,13 @@ function Login() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    if (captchaInput.trim().toUpperCase() !== captchaText) {
+      alert("Captcha does not match ❌");
+      setCaptchaText(generateCaptcha());
+      setCaptchaInput("");
+      return;
+    }
 
     const storedUser = JSON.parse(localStorage.getItem("user"));
 
@@ -65,6 +84,33 @@ function Login() {
               required
             />
           </label>
+
+          <label>
+            Enter Captcha
+            <input
+              type="text"
+              name="captcha"
+              placeholder="Type the captcha shown"
+              value={captchaInput}
+              onChange={(e) => setCaptchaInput(e.target.value)}
+              required
+            />
+          </label>
+
+          <p className="captcha-text auth-subtitle">
+            {captchaText}
+          </p>
+
+          <button
+            type="button"
+            className="auth-switch"
+            onClick={() => {
+              setCaptchaText(generateCaptcha());
+              setCaptchaInput("");
+            }}
+          >
+            Refresh Captcha
+          </button>
 
           <button type="submit" className="auth-submit">Login</button>
         </form>

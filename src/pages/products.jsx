@@ -67,11 +67,7 @@ export default function ProductsPage() {
       <div className="grid">
         {displayedProducts.map((product) => (
           <article key={product.id} className="card">
-            {product.image ? (
-              <img src={product.image} alt={product.name} className="product-image" />
-            ) : (
-              <div className="product-image product-image-fallback">{product.name}</div>
-            )}
+            <img src={product.image} alt={product.name} className="product-image" />
             <p className="category">{product.category}</p>
             <h3>{product.name}</h3>
             <p>{product.description}</p>

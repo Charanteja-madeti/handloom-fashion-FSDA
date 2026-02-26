@@ -9,6 +9,7 @@ import HomePage from './pages/home'
 import Login from './pages/login'
 import ProductDetailsPage from './pages/productdetails'
 import ProductsPage from './pages/products'
+import products from './pages/productsData'
 import Signup from './pages/signup'
 
 const CART_STORAGE_KEY = 'cartItems'
@@ -91,7 +92,24 @@ function App() {
 
     try {
       const parsedCart = savedCart ? JSON.parse(savedCart) : []
-      return Array.isArray(parsedCart) ? parsedCart : []
+
+      if (!Array.isArray(parsedCart)) {
+        return []
+      }
+
+      return parsedCart.map((item) => {
+        if (item?.image) {
+          return item
+        }
+
+        const matchedProduct = products.find((product) => product.id === item?.id)
+
+        if (!matchedProduct?.image) {
+          return item
+        }
+
+        return { ...item, image: matchedProduct.image }
+      })
     } catch {
       return []
     }

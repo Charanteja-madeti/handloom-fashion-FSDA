@@ -603,6 +603,11 @@ button:hover,
   margin: 0 0 14px;
   color: #6b7280;
 }
+.captcha-text {
+  margin: 4px 0 8px;
+  letter-spacing: 4px;
+  font-weight: 700;
+}
 
 .auth-form {
   display: grid;
