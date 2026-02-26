@@ -4,13 +4,16 @@ import CartPage from './pages/cart'
 import ContactPage from './pages/contact'
 import CheckoutPage from './pages/checkout'
 import Dashboard from './pages/dashboard'
+import AdminDashboard from './pages/adminDashboard'
 import Header from './pages/header'
 import HomePage from './pages/home'
 import Login from './pages/login'
+import ProductTrackingPage from './pages/productTracking'
 import ProductDetailsPage from './pages/productdetails'
 import ProductsPage from './pages/products'
 import products from './pages/productsData'
 import Signup from './pages/signup'
+import { getCurrentUser, isAuthenticated, logoutUser } from './pages/auth'
 
 const CART_STORAGE_KEY = 'cartItems'
 const THEME_STORAGE_KEY = 'themeMode'
@@ -52,19 +55,36 @@ function TawkVisibilityManager() {
 }
 
 function PrivateRoute({ children }) {
-  const isAuth = localStorage.getItem('isAuth') === 'true'
-  return isAuth ? children : <Navigate to="/login" />
+  return isAuthenticated() ? children : <Navigate to="/login" />
+}
+
+function AdminRoute({ children }) {
+  const isAuth = isAuthenticated()
+  const storedUser = getCurrentUser()
+  const isAdmin =
+    storedUser?.role === 'admin' || storedUser?.email?.trim().toLowerCase() === 'admin@handloom.com'
+
+  if (!isAuth) {
+    return <Navigate to="/login" />
+  }
+
+  return isAdmin ? children : <Navigate to="/dashboard" />
 }
 
 function PrivateLayout({ isDarkMode, onToggleTheme }) {
   const navigate = useNavigate()
-  const storedUser = JSON.parse(localStorage.getItem('user') || 'null')
+  const storedUser = getCurrentUser()
+  const isAdmin =
+    storedUser?.role === 'admin' || storedUser?.email?.trim().toLowerCase() === 'admin@handloom.com'
   const currentUser = storedUser
-    ? { name: storedUser.name || storedUser.email?.split('@')[0] || 'User' }
+    ? {
+        name: storedUser.name || storedUser.email?.split('@')[0] || 'User',
+        isAdmin,
+      }
     : null
 
-  function handleLogout() {
-    localStorage.removeItem('isAuth')
+  async function handleLogout() {
+    await logoutUser()
     navigate('/login')
   }
 
@@ -200,6 +220,22 @@ function App() {
             />
             <Route path="/checkout" element={<CheckoutPage cartItems={cartItems} />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route
+              path="/admin-dashboard"
+              element={
+                <AdminRoute>
+                  <AdminDashboard />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/product-tracking"
+              element={
+                <AdminRoute>
+                  <ProductTrackingPage />
+                </AdminRoute>
+              }
+            />
           </Route>
           <Route path="*" element={<Navigate to="/login" />} />
         </Routes>

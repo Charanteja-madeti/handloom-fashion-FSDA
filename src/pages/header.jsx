@@ -45,6 +45,8 @@ export default function Header({ currentUser, onLogout, isDarkMode, onToggleThem
           <Link to="/contact">Contact</Link>
           <Link to="/cart">Cart</Link>
           <Link to="/checkout">Checkout</Link>
+          {currentUser?.isAdmin && <Link to="/admin-dashboard">Admin Dashboard</Link>}
+          {currentUser?.isAdmin && <Link to="/product-tracking">Product Tracking</Link>}
           <button type="button" className="theme-toggle" onClick={onToggleTheme}>
             {isDarkMode ? 'White Mode' : 'Dark Mode'}
           </button>

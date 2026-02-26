@@ -1,10 +1,11 @@
 import { useNavigate } from 'react-router-dom'
+import { logoutUser } from './auth'
 
 export default function Dashboard() {
   const navigate = useNavigate()
 
-  function handleLogout() {
-    localStorage.removeItem('isAuth')
+  async function handleLogout() {
+    await logoutUser()
     navigate('/login')
   }
 

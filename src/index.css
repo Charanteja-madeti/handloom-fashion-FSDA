@@ -729,6 +729,61 @@ button:hover,
   margin-bottom: 18px;
 }
 
+.admin-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.admin-summary-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 14px;
+  background: #ffffff;
+}
+
+.admin-summary-card h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.admin-summary-card p {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.admin-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-action-link {
+  text-decoration: none;
+}
+
+.tracking-table-wrap {
+  overflow-x: auto;
+}
+
+.tracking-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tracking-table th,
+.tracking-table td {
+  border: 1px solid #e5e7eb;
+  padding: 10px;
+  text-align: left;
+}
+
+.tracking-table th {
+  background: #f9fafb;
+}
+
 .contact-intro {
   max-width: 700px;
 }
@@ -840,10 +895,20 @@ body.dark-mode .auth-card,
 body.dark-mode .cart-item,
 body.dark-mode .cart-summary,
 body.dark-mode .dashboard-card,
-body.dark-mode .contact-card {
+body.dark-mode .contact-card,
+body.dark-mode .admin-summary-card {
   background: #1e293b !important;
   border-color: #334155 !important;
   color: #e5e7eb !important;
+}
+
+body.dark-mode .tracking-table th,
+body.dark-mode .tracking-table td {
+  border-color: #334155 !important;
+}
+
+body.dark-mode .tracking-table th {
+  background: #0f172a !important;
 }
 
 body.dark-mode h1,

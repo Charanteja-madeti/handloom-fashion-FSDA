@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { loginUser } from "./auth";
 
 const generateCaptcha = () => {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -19,12 +20,13 @@ function Login() {
   });
   const [captchaText, setCaptchaText] = useState(generateCaptcha);
   const [captchaInput, setCaptchaInput] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (captchaInput.trim().toUpperCase() !== captchaText) {
@@ -34,25 +36,15 @@ function Login() {
       return;
     }
 
-    const storedUser = JSON.parse(localStorage.getItem("user"));
-
-    // 🔥 If no user registered
-    if (!storedUser) {
-      alert("Please Signup First ❗");
-      navigate("/signup");
-      return;
-    }
-
-    // 🔥 Check credentials
-    if (
-      storedUser.email === form.email &&
-      storedUser.password === form.password
-    ) {
+    try {
+      setIsSubmitting(true);
+      await loginUser({ email: form.email, password: form.password });
       alert("Login Successful 🎉");
-      localStorage.setItem("isAuth", "true");
-      navigate("/dashboard"); // change if needed
-    } else {
-      alert("Invalid Credentials ❌");
+      navigate("/dashboard");
+    } catch (error) {
+      alert(error.message || "Invalid Credentials ❌");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -112,7 +104,9 @@ function Login() {
             Refresh Captcha
           </button>
 
-          <button type="submit" className="auth-submit">Login</button>
+          <button type="submit" className="auth-submit" disabled={isSubmitting}>
+            {isSubmitting ? "Logging in..." : "Login"}
+          </button>
         </form>
 
         <button type="button" className="auth-switch" onClick={() => navigate('/signup')}>

@@ -1,18 +1,34 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { signupUser } from "./auth";
 
 function Signup() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    localStorage.setItem("user", JSON.stringify(form));
-    alert("Signup Successful 🎉");
-    navigate("/login");
+    try {
+      setIsSubmitting(true);
+      const response = await signupUser(form);
+
+      if (response?.alreadyRegistered) {
+        alert("Account already exists. Please login.");
+        navigate("/login");
+        return;
+      }
+
+      alert("Signup Successful 🎉");
+      navigate("/login");
+    } catch (error) {
+      alert(error.message || "Signup failed");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -22,6 +38,16 @@ function Signup() {
         <p className="auth-subtitle">Sign up to access your personalized shopping dashboard.</p>
 
         <form className="auth-form" onSubmit={handleSubmit}>
+          <label>
+            Full Name
+            <input
+              name="name"
+              type="text"
+              placeholder="Enter your name"
+              onChange={handleChange}
+              required
+            />
+          </label>
           <label>
             Email Address
             <input
@@ -42,7 +68,9 @@ function Signup() {
               required
             />
           </label>
-          <button type="submit" className="auth-submit">Sign Up</button>
+          <button type="submit" className="auth-submit" disabled={isSubmitting}>
+            {isSubmitting ? "Creating account..." : "Sign Up"}
+          </button>
         </form>
 
         <button type="button" className="auth-switch" onClick={() => navigate('/login')}>
