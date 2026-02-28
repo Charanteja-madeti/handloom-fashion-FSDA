@@ -15,6 +15,44 @@ The React Compiler is not enabled on this template because of its impact on dev 
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
 
+## Authentication Setup (Login / Signup)
+
+The frontend auth client uses:
+
+- `VITE_API_BASE_URL` when provided
+- otherwise `/api` by default
+
+### Local development
+
+1. Start backend on port `5000`:
+
+```bash
+cd backend
+npm install
+npm run db:init
+npm start
+```
+
+2. Start frontend dev server:
+
+```bash
+cd front
+npm install
+npm run dev
+```
+
+Vite proxy forwards `/api/*` to `http://localhost:5000` in development.
+
+### Production / deployed frontend
+
+Set `VITE_API_BASE_URL` in your frontend environment to your backend base URL, for example:
+
+```bash
+VITE_API_BASE_URL=https://your-backend-domain.com/api
+```
+
+Backend supports both root auth routes and `/api` auth routes (`/signup` and `/api/signup`, etc.) for compatibility.
+
 ## Checkout Email Setup (EmailJS)
 
 The checkout form can send customer details directly to your Gmail using EmailJS.

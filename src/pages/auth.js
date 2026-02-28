@@ -1,4 +1,6 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+const configuredApiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').trim()
+const API_BASE_URL = configuredApiBaseUrl || '/api'
+const IS_PRODUCTION_BUILD = import.meta.env.PROD
 
 const ACCESS_TOKEN_STORAGE_KEY = 'auth_token'
 const REFRESH_TOKEN_STORAGE_KEY = 'refresh_token'
@@ -6,18 +8,34 @@ const CURRENT_USER_STORAGE_KEY = 'user'
 const IS_AUTH_STORAGE_KEY = 'isAuth'
 
 async function request(path, options = {}) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
-  })
+  if (IS_PRODUCTION_BUILD && !configuredApiBaseUrl) {
+    throw new Error('VITE_API_BASE_URL is not set. Add your backend URL in Netlify environment variables, for example: https://your-backend-domain.com/api')
+  }
+
+  const normalizedBaseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL
+  const finalRequestUrl = `${normalizedBaseUrl}${path}`
+
+  let response
+  try {
+    response = await fetch(finalRequestUrl, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
+      },
+    })
+  } catch {
+    throw new Error('Unable to reach authentication server. Please check backend URL/server status.')
+  }
 
   const data = await response.json().catch(() => ({}))
 
   if (!response.ok) {
-    throw new Error(data?.message || 'Request failed')
+    if (response.status === 404 && /^\/(signup|login|logout|refresh-token)$/.test(path)) {
+      throw new Error('Authentication API not found. Configure VITE_API_BASE_URL to your backend, for example: https://your-backend-domain.com/api')
+    }
+
+    throw new Error(data?.message || `Request failed (${response.status})`)
   }
 
   return data
@@ -98,7 +116,8 @@ export async function logoutUser() {
         method: 'POST',
         body: JSON.stringify({ refreshToken }),
       })
-    } catch {
+    } catch (error) {
+      console.warn('Logout request failed:', error?.message || error)
     }
   }
 
