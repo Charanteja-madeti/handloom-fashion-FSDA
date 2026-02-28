@@ -8,6 +8,7 @@ const crypto = require("crypto");
 const app = express();
 const authRouter = express.Router();
 const port = Number(process.env.PORT || 5000);
+const isProduction = process.env.NODE_ENV === "production";
 const jwtSecret = process.env.JWT_SECRET || "change_this_secret_in_production";
 const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET || "change_this_refresh_secret_in_production";
 
@@ -15,9 +16,27 @@ const dbConfig = {
   host: process.env.DB_HOST || "localhost",
   port: Number(process.env.DB_PORT || 3306),
   user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "2400090002",
+  password: process.env.DB_PASSWORD || "",
   database: process.env.DB_NAME || "handloom"
 };
+
+const missingProductionEnv = [];
+
+if (isProduction && !process.env.DB_PASSWORD) {
+  missingProductionEnv.push("DB_PASSWORD");
+}
+
+if (isProduction && (!process.env.JWT_SECRET || process.env.JWT_SECRET === "change_this_secret_in_production")) {
+  missingProductionEnv.push("JWT_SECRET");
+}
+
+if (isProduction && (!process.env.JWT_REFRESH_SECRET || process.env.JWT_REFRESH_SECRET === "change_this_refresh_secret_in_production")) {
+  missingProductionEnv.push("JWT_REFRESH_SECRET");
+}
+
+if (missingProductionEnv.length > 0) {
+  throw new Error(`Missing required production env vars: ${missingProductionEnv.join(", ")}`);
+}
 
 const pool = mysql.createPool({
   ...dbConfig,
@@ -26,7 +45,26 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
-app.use(cors());
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error("CORS blocked for this origin"));
+  }
+}));
 app.use(express.json());
 
 function hashToken(token) {

@@ -53,6 +53,26 @@ VITE_API_BASE_URL=https://your-backend-domain.com/api
 
 Backend supports both root auth routes and `/api` auth routes (`/signup` and `/api/signup`, etc.) for compatibility.
 
+### Render backend + Netlify frontend (recommended)
+
+1. Push this repo to GitHub and create a new Render service using `render.yaml`.
+2. In Render service environment, set real DB values:
+	- `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`
+	- keep generated `JWT_SECRET` and `JWT_REFRESH_SECRET`
+3. Set `ALLOWED_ORIGINS` to your Netlify domain:
+
+```bash
+ALLOWED_ORIGINS=https://handloomfashions.netlify.app
+```
+
+4. After Render deploys, copy backend URL and set Netlify env var:
+
+```bash
+VITE_API_BASE_URL=https://your-render-service.onrender.com/api
+```
+
+5. Redeploy Netlify frontend.
+
 ## Checkout Email Setup (EmailJS)
 
 The checkout form can send customer details directly to your Gmail using EmailJS.
