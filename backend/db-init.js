@@ -4,12 +4,8 @@ async function initDatabase() {
   const host = process.env.DB_HOST || "localhost";
   const port = Number(process.env.DB_PORT || 3306);
   const user = process.env.DB_USER || "root";
-  const password = process.env.DB_PASSWORD;
+  const password = process.env.DB_PASSWORD || "2400090002";
   const database = process.env.DB_NAME || "handloom";
-
-  if (!password) {
-    throw new Error("DB_PASSWORD is required. Set it before running db-init.");
-  }
 
   const rootConnection = await mysql.createConnection({
     host,

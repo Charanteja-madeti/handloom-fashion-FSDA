@@ -6,9 +6,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 
 const app = express();
-const authRouter = express.Router();
 const port = Number(process.env.PORT || 5000);
-const isProduction = process.env.NODE_ENV === "production";
 const jwtSecret = process.env.JWT_SECRET || "change_this_secret_in_production";
 const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET || "change_this_refresh_secret_in_production";
 
@@ -16,27 +14,9 @@ const dbConfig = {
   host: process.env.DB_HOST || "localhost",
   port: Number(process.env.DB_PORT || 3306),
   user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "",
+  password: process.env.DB_PASSWORD || "2400090002",
   database: process.env.DB_NAME || "handloom"
 };
-
-const missingProductionEnv = [];
-
-if (isProduction && !process.env.DB_PASSWORD) {
-  missingProductionEnv.push("DB_PASSWORD");
-}
-
-if (isProduction && (!process.env.JWT_SECRET || process.env.JWT_SECRET === "change_this_secret_in_production")) {
-  missingProductionEnv.push("JWT_SECRET");
-}
-
-if (isProduction && (!process.env.JWT_REFRESH_SECRET || process.env.JWT_REFRESH_SECRET === "change_this_refresh_secret_in_production")) {
-  missingProductionEnv.push("JWT_REFRESH_SECRET");
-}
-
-if (missingProductionEnv.length > 0) {
-  throw new Error(`Missing required production env vars: ${missingProductionEnv.join(", ")}`);
-}
 
 const pool = mysql.createPool({
   ...dbConfig,
@@ -45,26 +25,7 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
-  .split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean);
-
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin) {
-      callback(null, true);
-      return;
-    }
-
-    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
-      callback(null, true);
-      return;
-    }
-
-    callback(new Error("CORS blocked for this origin"));
-  }
-}));
+app.use(cors());
 app.use(express.json());
 
 function hashToken(token) {
@@ -118,7 +79,7 @@ function verifyToken(req, res, next) {
 }
 
 /* ✅ Signup */
-authRouter.post("/signup", async (req, res) => {
+app.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
@@ -150,7 +111,7 @@ authRouter.post("/signup", async (req, res) => {
 });
 
 /* ✅ Login */
-authRouter.post("/login", async (req, res) => {
+app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -200,7 +161,7 @@ authRouter.post("/login", async (req, res) => {
   }
 });
 
-authRouter.post("/refresh-token", async (req, res) => {
+app.post("/refresh-token", async (req, res) => {
   try {
     const { refreshToken } = req.body;
 
@@ -260,7 +221,7 @@ authRouter.post("/refresh-token", async (req, res) => {
   }
 });
 
-authRouter.post("/logout", async (req, res) => {
+app.post("/logout", async (req, res) => {
   try {
     const { refreshToken } = req.body;
 
@@ -278,6 +239,22 @@ authRouter.post("/logout", async (req, res) => {
   }
 });
 
+app.get("/users", async (req, res) => {
+  try {
+    const [users] = await pool.query(
+      "SELECT id, name, email, created_at, updated_at FROM users ORDER BY id DESC"
+    );
+
+    return res.status(200).json({
+      count: users.length,
+      users
+    });
+  } catch (error) {
+    console.error("Get users error:", error.message);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 app.get("/protected", verifyToken, (req, res) => {
   return res.status(200).json({
     message: "Access granted",
@@ -285,9 +262,17 @@ app.get("/protected", verifyToken, (req, res) => {
   });
 });
 
-app.use(authRouter);
-app.use("/api", authRouter);
+async function startServer() {
+  try {
+    await pool.query("SELECT 1");
+    app.listen(port, () => {
+      console.log(`🚀 Server running on port ${port}`);
+      console.log(`✅ Database connected: ${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`);
+    });
+  } catch (error) {
+    console.error("❌ Failed to connect to database:", error.message);
+    process.exit(1);
+  }
+}
 
-app.listen(port, () => {
-  console.log(`🚀 Server running on port ${port}`);
-});
+startServer();
