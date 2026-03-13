@@ -6,7 +6,9 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 
 const app = express();
+const authRouter = express.Router();
 const port = Number(process.env.PORT || 5000);
+const isProduction = process.env.NODE_ENV === "production";
 const jwtSecret = process.env.JWT_SECRET || "change_this_secret_in_production";
 const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET || "change_this_refresh_secret_in_production";
 
@@ -14,9 +16,27 @@ const dbConfig = {
   host: process.env.DB_HOST || "localhost",
   port: Number(process.env.DB_PORT || 3306),
   user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "2400090002",
+  password: process.env.DB_PASSWORD || "",
   database: process.env.DB_NAME || "handloom"
 };
+
+const missingProductionEnv = [];
+
+if (isProduction && !process.env.DB_PASSWORD) {
+  missingProductionEnv.push("DB_PASSWORD");
+}
+
+if (isProduction && (!process.env.JWT_SECRET || process.env.JWT_SECRET === "change_this_secret_in_production")) {
+  missingProductionEnv.push("JWT_SECRET");
+}
+
+if (isProduction && (!process.env.JWT_REFRESH_SECRET || process.env.JWT_REFRESH_SECRET === "change_this_refresh_secret_in_production")) {
+  missingProductionEnv.push("JWT_REFRESH_SECRET");
+}
+
+if (missingProductionEnv.length > 0) {
+  throw new Error(`Missing required production env vars: ${missingProductionEnv.join(", ")}`);
+}
 
 const pool = mysql.createPool({
   ...dbConfig,
@@ -25,8 +45,63 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
-app.use(cors());
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+function isNetlifyOrigin(origin) {
+  try {
+    const parsedUrl = new URL(origin);
+    return parsedUrl.hostname.endsWith(".netlify.app");
+  } catch {
+    return false;
+  }
+}
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin) || isNetlifyOrigin(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error("CORS blocked for this origin"));
+  }
+}));
 app.use(express.json());
+
+async function ensureAuthSchema() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(100) NULL,
+      email VARCHAR(191) NOT NULL,
+      password_hash VARCHAR(255) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_users_email (email)
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS refresh_tokens (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id INT NOT NULL,
+      token_hash VARCHAR(255) NOT NULL UNIQUE,
+      expires_at DATETIME NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_refresh_user FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE
+    )
+  `);
+}
 
 function hashToken(token) {
   return crypto.createHash("sha256").update(token).digest("hex");
@@ -79,7 +154,7 @@ function verifyToken(req, res, next) {
 }
 
 /* ✅ Signup */
-app.post("/signup", async (req, res) => {
+authRouter.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
@@ -111,7 +186,7 @@ app.post("/signup", async (req, res) => {
 });
 
 /* ✅ Login */
-app.post("/login", async (req, res) => {
+authRouter.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -161,7 +236,7 @@ app.post("/login", async (req, res) => {
   }
 });
 
-app.post("/refresh-token", async (req, res) => {
+authRouter.post("/refresh-token", async (req, res) => {
   try {
     const { refreshToken } = req.body;
 
@@ -221,7 +296,7 @@ app.post("/refresh-token", async (req, res) => {
   }
 });
 
-app.post("/logout", async (req, res) => {
+authRouter.post("/logout", async (req, res) => {
   try {
     const { refreshToken } = req.body;
 
@@ -239,22 +314,6 @@ app.post("/logout", async (req, res) => {
   }
 });
 
-app.get("/users", async (req, res) => {
-  try {
-    const [users] = await pool.query(
-      "SELECT id, name, email, created_at, updated_at FROM users ORDER BY id DESC"
-    );
-
-    return res.status(200).json({
-      count: users.length,
-      users
-    });
-  } catch (error) {
-    console.error("Get users error:", error.message);
-    return res.status(500).json({ message: "Internal server error" });
-  }
-});
-
 app.get("/protected", verifyToken, (req, res) => {
   return res.status(200).json({
     message: "Access granted",
@@ -262,15 +321,17 @@ app.get("/protected", verifyToken, (req, res) => {
   });
 });
 
+app.use(authRouter);
+app.use("/api", authRouter);
+
 async function startServer() {
   try {
-    await pool.query("SELECT 1");
+    await ensureAuthSchema();
     app.listen(port, () => {
       console.log(`🚀 Server running on port ${port}`);
-      console.log(`✅ Database connected: ${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`);
     });
   } catch (error) {
-    console.error("❌ Failed to connect to database:", error.message);
+    console.error("Server startup failed:", error.message);
     process.exit(1);
   }
 }
