@@ -26,10 +26,6 @@ async function request(path, options = {}) {
   const data = await response.json().catch(() => ({}))
 
   if (!response.ok) {
-    if (response.status === 404 && /^\/(signup|login|logout|refresh-token)$/.test(path)) {
-      throw new Error('Authentication API not found. Configure VITE_API_BASE_URL to your backend, for example: https://your-backend-domain.com/api')
-    }
-
     throw new Error(data?.message || `Request failed (${response.status})`)
   }
 
