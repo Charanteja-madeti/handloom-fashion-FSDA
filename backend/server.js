@@ -35,7 +35,10 @@ if (isProduction && (!process.env.JWT_REFRESH_SECRET || process.env.JWT_REFRESH_
 }
 
 if (missingProductionEnv.length > 0) {
-  throw new Error(`Missing required production env vars: ${missingProductionEnv.join(", ")}`);
+  throw new Error(
+    `Missing required production env vars: ${missingProductionEnv.join(", ")}. ` +
+    "Set them in your deployment environment before starting the server."
+  );
 }
 
 const pool = mysql.createPool({
