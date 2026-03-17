@@ -1,3 +1,4 @@
+require("dotenv").config({ path: require("path").join(__dirname, ".env") });
 const express = require("express");
 const cors = require("cors");
 const mysql = require("mysql2/promise");
@@ -151,7 +152,7 @@ function verifyToken(req, res, next) {
     const decoded = jwt.verify(token, jwtSecret);
     req.user = decoded;
     return next();
-  } catch (error) {
+  } catch (_error) {
     return res.status(401).json({ message: "Invalid or expired token" });
   }
 }
@@ -250,7 +251,7 @@ authRouter.post("/refresh-token", async (req, res) => {
     let payload;
     try {
       payload = jwt.verify(refreshToken, jwtRefreshSecret);
-    } catch (error) {
+    } catch (_error) {
       return res.status(401).json({ message: "Invalid or expired refresh token" });
     }
 
