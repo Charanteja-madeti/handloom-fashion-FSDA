@@ -179,6 +179,15 @@ export default function Header({
               <button type="button" className="menu-row-link" onClick={() => closeMenuAndNavigate('/product-tracking')}>
                 2. Orders
               </button>
+              {currentUser?.isAdmin ? (
+                <button
+                  type="button"
+                  className="menu-row-link"
+                  onClick={() => closeMenuAndNavigate('/admin-dashboard')}
+                >
+                  Admin Portal
+                </button>
+              ) : null}
               <div className="menu-setting-row">
                 <span>3. Setting - Mode</span>
                 <button

@@ -49,7 +49,7 @@ export default function Header({ currentUser, onLogout, isDarkMode, onToggleThem
             <span className="nav-icon" aria-hidden="true">TR</span>
             <span>{currentUser?.isAdmin ? 'Product Tracking' : 'My Orders'}</span>
           </Link>
-          {currentUser?.isAdmin && <Link to="/admin-dashboard">Admin Dashboard</Link>}
+          {currentUser?.isAdmin && <Link to="/admin-dashboard">Admin Portal</Link>}
           <button type="button" className="theme-toggle" onClick={onToggleTheme}>
             {isDarkMode ? 'White Mode' : 'Dark Mode'}
           </button>
