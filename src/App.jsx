@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import CartPage from './pages/cart'
 import ContactPage from './pages/contact'
@@ -11,12 +11,42 @@ import Login from './pages/login'
 import ProductTrackingPage from './pages/productTracking'
 import ProductDetailsPage from './pages/productdetails'
 import ProductsPage from './pages/products'
-import products from './pages/productsData'
 import Signup from './pages/signup'
-import { getCurrentUser, isAuthenticated, logoutUser } from './pages/auth'
+import { getAccessToken, getCurrentUser, isAuthenticated, logoutUser } from './pages/auth'
 
 const CART_STORAGE_KEY = 'cartItems'
 const THEME_STORAGE_KEY = 'themeMode'
+const configuredApiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').trim()
+const API_ROOT = configuredApiBaseUrl
+  ? configuredApiBaseUrl.replace(/\/+$/, '').replace(/\/api$/, '')
+  : ''
+
+function apiUrl(path) {
+  return `${API_ROOT}${path}`
+}
+
+function normalizeCartItem(item) {
+  const productId = Number(item?.id)
+  const quantity = Number(item?.quantity || 0)
+  const price = Number(item?.price || 0)
+
+  if (!Number.isInteger(productId) || productId <= 0) {
+    return null
+  }
+
+  if (!Number.isInteger(quantity) || quantity <= 0 || !Number.isFinite(price) || price < 0) {
+    return null
+  }
+
+  return {
+    id: productId,
+    name: String(item?.name || '').trim(),
+    category: String(item?.category || '').trim(),
+    image: String(item?.image || '').trim(),
+    price,
+    quantity,
+  }
+}
 
 function TawkVisibilityManager() {
   const { pathname } = useLocation()
@@ -117,27 +147,103 @@ function App() {
         return []
       }
 
-      return parsedCart.map((item) => {
-        if (item?.image) {
-          return item
-        }
-
-        const matchedProduct = products.find((product) => product.id === item?.id)
-
-        if (!matchedProduct?.image) {
-          return item
-        }
-
-        return { ...item, image: matchedProduct.image }
-      })
+      return parsedCart.map((item) => normalizeCartItem(item)).filter(Boolean)
     } catch {
       return []
     }
   })
+  const [isCartReady, setIsCartReady] = useState(false)
+  const cartSyncTimeoutRef = useRef(null)
+  const currentUser = getCurrentUser()
+  const authStateKey = `${isAuthenticated()}-${String(currentUser?.id || currentUser?.email || '')}`
 
   useEffect(() => {
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems))
   }, [cartItems])
+
+  useEffect(() => {
+    let ignore = false
+
+    async function fetchBackendCart() {
+      const token = getAccessToken()
+
+      if (!isAuthenticated() || !token) {
+        if (!ignore) {
+          setIsCartReady(true)
+        }
+        return
+      }
+
+      try {
+        const response = await fetch(apiUrl('/api/cart'), {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        const data = await response.json().catch(() => ({}))
+
+        if (!ignore && response.ok && Array.isArray(data.items)) {
+          setCartItems(data.items.map((item) => normalizeCartItem(item)).filter(Boolean))
+        }
+      } catch (error) {
+        console.warn('Unable to load cart from backend:', error?.message || error)
+      } finally {
+        if (!ignore) {
+          setIsCartReady(true)
+        }
+      }
+    }
+
+    setIsCartReady(false)
+    fetchBackendCart()
+
+    return () => {
+      ignore = true
+    }
+  }, [authStateKey])
+
+  useEffect(() => {
+    if (!isCartReady || !isAuthenticated()) {
+      return
+    }
+
+    const token = getAccessToken()
+    if (!token) {
+      return
+    }
+
+    if (cartSyncTimeoutRef.current) {
+      clearTimeout(cartSyncTimeoutRef.current)
+    }
+
+    cartSyncTimeoutRef.current = setTimeout(async () => {
+      try {
+        const response = await fetch(apiUrl('/api/cart'), {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            items: cartItems.map((item) => normalizeCartItem(item)).filter(Boolean),
+          }),
+        })
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}))
+          console.warn('Backend cart sync failed:', data?.message || response.status)
+        }
+      } catch (error) {
+        console.warn('Backend cart sync error:', error?.message || error)
+      }
+    }, 250)
+
+    return () => {
+      if (cartSyncTimeoutRef.current) {
+        clearTimeout(cartSyncTimeoutRef.current)
+      }
+    }
+  }, [cartItems, isCartReady, authStateKey])
 
   useEffect(() => {
     const isDarkMode = themeMode === 'dark'
@@ -185,6 +291,26 @@ function App() {
     setCartItems((prevItems) => prevItems.filter((item) => item.id !== productId))
   }
 
+  async function handleOrderPlaced() {
+    setCartItems([])
+
+    const token = getAccessToken()
+    if (!token) {
+      return
+    }
+
+    try {
+      await fetch(apiUrl('/api/cart'), {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+    } catch (error) {
+      console.warn('Failed to clear backend cart after order:', error?.message || error)
+    }
+  }
+
   return (
     <div className="app-shell">
       <TawkVisibilityManager />
@@ -218,7 +344,10 @@ function App() {
                 />
               }
             />
-            <Route path="/checkout" element={<CheckoutPage cartItems={cartItems} />} />
+            <Route
+              path="/checkout"
+              element={<CheckoutPage cartItems={cartItems} onOrderPlaced={handleOrderPlaced} />}
+            />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route
               path="/admin-dashboard"
@@ -228,14 +357,7 @@ function App() {
                 </AdminRoute>
               }
             />
-            <Route
-              path="/product-tracking"
-              element={
-                <AdminRoute>
-                  <ProductTrackingPage />
-                </AdminRoute>
-              }
-            />
+            <Route path="/product-tracking" element={<ProductTrackingPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/login" />} />
         </Routes>

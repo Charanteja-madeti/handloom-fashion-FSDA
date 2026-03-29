@@ -1,5 +1,7 @@
 const configuredApiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').trim()
-const API_BASE_URL = configuredApiBaseUrl || '/api'
+const API_ROOT = configuredApiBaseUrl
+  ? configuredApiBaseUrl.replace(/\/+$/, '').replace(/\/api$/, '')
+  : ''
 
 const ACCESS_TOKEN_STORAGE_KEY = 'auth_token'
 const REFRESH_TOKEN_STORAGE_KEY = 'refresh_token'
@@ -7,8 +9,7 @@ const CURRENT_USER_STORAGE_KEY = 'user'
 const IS_AUTH_STORAGE_KEY = 'isAuth'
 
 async function request(path, options = {}) {
-  const normalizedBaseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL
-  const finalRequestUrl = `${normalizedBaseUrl}${path}`
+  const finalRequestUrl = `${API_ROOT}/api${path}`
 
   let response
   try {
@@ -33,7 +34,7 @@ async function request(path, options = {}) {
 }
 
 export function getAccessToken() {
-  return localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY)
+  return localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) || localStorage.getItem('token')
 }
 
 export function getRefreshToken() {
@@ -60,6 +61,7 @@ export function isAuthenticated() {
 
 export function saveSession({ token, refreshToken, user }) {
   localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, token)
+  localStorage.setItem('token', token)
   localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, refreshToken)
   localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(user))
   localStorage.setItem(IS_AUTH_STORAGE_KEY, 'true')
@@ -67,6 +69,7 @@ export function saveSession({ token, refreshToken, user }) {
 
 export function clearSession() {
   localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY)
+  localStorage.removeItem('token')
   localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY)
   localStorage.removeItem(CURRENT_USER_STORAGE_KEY)
   localStorage.removeItem(IS_AUTH_STORAGE_KEY)
