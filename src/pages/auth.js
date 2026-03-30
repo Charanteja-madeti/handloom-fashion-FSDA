@@ -11,7 +11,7 @@ const IS_AUTH_STORAGE_KEY = 'isAuth'
 
 async function request(path, options = {}) {
   if (IS_PRODUCTION_BUILD && !configuredApiBaseUrl) {
-    throw new Error('VITE_API_BASE_URL is not set. Add your backend URL in Netlify environment variables, for example: https://your-backend-domain.com/api')
+    throw new Error('VITE_API_BASE_URL is not set. Add your backend URL in your deployment environment variables (for example in Vercel), for example: https://your-backend-domain.com/api')
   }
 
   const finalRequestUrl = `${API_ROOT}/api${path}`
