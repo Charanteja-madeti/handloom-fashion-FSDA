@@ -12,6 +12,7 @@ const port = Number(process.env.PORT || 5000);
 const isProduction = process.env.NODE_ENV === "production";
 const jwtSecret = process.env.JWT_SECRET || "change_this_secret_in_production";
 const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET || "change_this_refresh_secret_in_production";
+let schemaInitPromise = null;
 
 const dbConfig = {
   host: process.env.DB_HOST || "localhost",
@@ -63,6 +64,15 @@ function isNetlifyOrigin(origin) {
   }
 }
 
+function isVercelOrigin(origin) {
+  try {
+    const parsedUrl = new URL(origin);
+    return parsedUrl.hostname.endsWith(".vercel.app");
+  } catch {
+    return false;
+  }
+}
+
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) {
@@ -70,7 +80,7 @@ app.use(cors({
       return;
     }
 
-    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin) || isNetlifyOrigin(origin)) {
+    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin) || isNetlifyOrigin(origin) || isVercelOrigin(origin)) {
       callback(null, true);
       return;
     }
@@ -79,6 +89,27 @@ app.use(cors({
   }
 }));
 app.use(express.json());
+
+async function ensureSchemaInitialized() {
+  if (!schemaInitPromise) {
+    schemaInitPromise = ensureAuthSchema().catch((error) => {
+      schemaInitPromise = null;
+      throw error;
+    });
+  }
+
+  return schemaInitPromise;
+}
+
+app.use(async (_req, res, next) => {
+  try {
+    await ensureSchemaInitialized();
+    next();
+  } catch (error) {
+    console.error("Schema initialization failed:", error.message);
+    res.status(500).json({ message: "Server initialization failed" });
+  }
+});
 
 async function ensureAuthSchema() {
   await pool.query(`
@@ -1261,7 +1292,7 @@ app.use("/api", authRouter);
 
 async function startServer() {
   try {
-    await ensureAuthSchema();
+    await ensureSchemaInitialized();
     app.listen(port, () => {
       console.log(`🚀 Server running on port ${port}`);
     });
@@ -1271,4 +1302,8 @@ async function startServer() {
   }
 }
 
-startServer();
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = app;
