@@ -37,7 +37,7 @@ function buildSslConfig() {
   const caFilePath = (process.env.DB_SSL_CA_PATH || "").trim();
 
   if (caFromEnv) {
-    sslConfig.ca = caFromEnv;
+    sslConfig.ca = caFromEnv.includes("\\n") ? caFromEnv.replace(/\\n/g, "\n") : caFromEnv;
   } else if (caFilePath) {
     try {
       sslConfig.ca = fs.readFileSync(caFilePath, "utf8");
