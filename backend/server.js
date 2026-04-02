@@ -5,6 +5,7 @@ const mysql = require("mysql2/promise");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const fs = require("fs");
 
 const app = express();
 const authRouter = express.Router();
@@ -21,6 +22,32 @@ const dbConfig = {
   password: process.env.DB_PASSWORD || "",
   database: process.env.DB_NAME || "handloom"
 };
+
+function buildSslConfig() {
+  const sslEnabled = ["true", "require", "required", "1"].includes(String(process.env.DB_SSL || process.env.DB_SSL_MODE || "").toLowerCase());
+
+  if (!sslEnabled) {
+    return undefined;
+  }
+
+  const rejectUnauthorized = !["false", "0", "no"].includes(String(process.env.DB_SSL_REJECT_UNAUTHORIZED || "true").toLowerCase());
+  const sslConfig = { rejectUnauthorized };
+
+  const caFromEnv = (process.env.DB_SSL_CA || "").trim();
+  const caFilePath = (process.env.DB_SSL_CA_PATH || "").trim();
+
+  if (caFromEnv) {
+    sslConfig.ca = caFromEnv;
+  } else if (caFilePath) {
+    try {
+      sslConfig.ca = fs.readFileSync(caFilePath, "utf8");
+    } catch (error) {
+      console.warn(`Unable to read DB SSL CA file at ${caFilePath}: ${error.message}`);
+    }
+  }
+
+  return sslConfig;
+}
 
 if (isProduction) {
   const missingProductionEnv = [];
@@ -59,6 +86,7 @@ if (isProduction) {
 
 const pool = mysql.createPool({
   ...dbConfig,
+  ssl: buildSslConfig(),
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
