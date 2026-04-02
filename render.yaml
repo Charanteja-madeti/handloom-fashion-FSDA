@@ -27,6 +27,10 @@ services:
         value: true
       - key: DB_SSL_REJECT_UNAUTHORIZED
         value: true
+      - key: DB_SSL_CA
+        sync: false
+      - key: DB_SSL_CA_PATH
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_REFRESH_SECRET
