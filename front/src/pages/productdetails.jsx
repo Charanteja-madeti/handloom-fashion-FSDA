@@ -2,7 +2,7 @@ import { useParams } from 'react-router-dom'
 import { useState, useEffect, useCallback } from 'react'
 import legacyProducts from './productsData'
 
-const configuredApiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').trim()
+const configuredApiBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'https://handloom-fashion-fsda.onrender.com').trim()
 const API_ROOT = configuredApiBaseUrl
   ? configuredApiBaseUrl.replace(/\/+$/, '').replace(/\/api$/, '')
   : ''

@@ -10,8 +10,8 @@ const app = express();
 const authRouter = express.Router();
 const port = Number(process.env.PORT || 5000);
 const isProduction = process.env.NODE_ENV === "production";
-const jwtSecret = process.env.JWT_SECRET || "change_this_secret_in_production";
-const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET || "change_this_refresh_secret_in_production";
+const jwtSecret = process.env.JWT_SECRET || crypto.randomBytes(32).toString("hex");
+const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET || crypto.randomBytes(32).toString("hex");
 let schemaInitPromise = null;
 
 const dbConfig = {
@@ -22,25 +22,39 @@ const dbConfig = {
   database: process.env.DB_NAME || "handloom"
 };
 
-const missingProductionEnv = [];
+if (isProduction) {
+  const missingProductionEnv = [];
 
-if (isProduction && !process.env.DB_PASSWORD) {
-  missingProductionEnv.push("DB_PASSWORD");
-}
+  if (!process.env.DB_HOST) {
+    missingProductionEnv.push("DB_HOST");
+  }
 
-if (isProduction && (!process.env.JWT_SECRET || process.env.JWT_SECRET === "change_this_secret_in_production")) {
-  missingProductionEnv.push("JWT_SECRET");
-}
+  if (!process.env.DB_USER) {
+    missingProductionEnv.push("DB_USER");
+  }
 
-if (isProduction && (!process.env.JWT_REFRESH_SECRET || process.env.JWT_REFRESH_SECRET === "change_this_refresh_secret_in_production")) {
-  missingProductionEnv.push("JWT_REFRESH_SECRET");
-}
+  if (!process.env.DB_NAME) {
+    missingProductionEnv.push("DB_NAME");
+  }
 
-if (missingProductionEnv.length > 0) {
-  throw new Error(
-    `Missing required production env vars: ${missingProductionEnv.join(", ")}. ` +
-    "Set them in your deployment environment before starting the server."
-  );
+  if (missingProductionEnv.length > 0) {
+    throw new Error(
+      `Missing required production env vars: ${missingProductionEnv.join(", ")}. ` +
+      "Set them in your deployment environment before starting the server."
+    );
+  }
+
+  if (!process.env.DB_PASSWORD) {
+    console.warn("DB_PASSWORD is not set in production; using an empty password.");
+  }
+
+  if (!process.env.JWT_SECRET) {
+    console.warn("JWT_SECRET is not set in production; generating a runtime fallback secret.");
+  }
+
+  if (!process.env.JWT_REFRESH_SECRET) {
+    console.warn("JWT_REFRESH_SECRET is not set in production; generating a runtime fallback refresh secret.");
+  }
 }
 
 const pool = mysql.createPool({

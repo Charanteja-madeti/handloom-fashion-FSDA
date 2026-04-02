@@ -1,9 +1,10 @@
 [build]
-  command = "npm run build --prefix front"
+  command = "cd front && npm install && npm run build"
   publish = "front/dist"
 
 [build.environment]
   NODE_VERSION = "20.19.0"
+  VITE_API_BASE_URL = "https://handloom-fashion-fsda.onrender.com"
 
 [[redirects]]
   from = "/api/*"

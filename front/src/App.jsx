@@ -18,7 +18,7 @@ import { getAccessToken, getCurrentUser, isAuthenticated, logoutUser } from './p
 const CART_STORAGE_KEY = 'cartItems'
 const WISHLIST_STORAGE_KEY = 'wishlistItems'
 const THEME_STORAGE_KEY = 'themeMode'
-const configuredApiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').trim()
+const configuredApiBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'https://handloom-fashion-fsda.onrender.com').trim()
 const API_ROOT = configuredApiBaseUrl
   ? configuredApiBaseUrl.replace(/\/+$/, '').replace(/\/api$/, '')
   : ''

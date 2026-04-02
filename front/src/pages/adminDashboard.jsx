@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { getAccessToken } from './auth'
 
-const configuredApiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').trim()
+const configuredApiBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'https://handloom-fashion-fsda.onrender.com').trim()
 const API_ROOT = configuredApiBaseUrl
   ? configuredApiBaseUrl.replace(/\/+$/, '').replace(/\/api$/, '')
   : configuredApiBaseUrl
